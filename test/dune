@@ -1,0 +1,15 @@
+(library (name RequeryNativeTest) (public_name requery-native.test)
+    (modules (:standard \ RequeryNativeTestPesyModules))
+    (libraries requery-native.test.pesy-modules)
+    (flags -linkall -g -w -9 -open RequeryNativeTestPesyModules))
+(library (public_name requery-native.test.pesy-modules)
+    (name RequeryNativeTestPesyModules)
+    (modules RequeryNativeTestPesyModules)
+    (libraries ezpostgresql lwt rely.lib requery-native.library))
+(rule
+    (with-stdout-to RequeryNativeTestPesyModules.re
+        (run echo
+             "module Library = RequeryNativeLibrary;\
+            \nmodule Lwt = Lwt;\
+            \nmodule Ezpostgresql = Ezpostgresql;\
+            \nmodule Rely = Rely;")))

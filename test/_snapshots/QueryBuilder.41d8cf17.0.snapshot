@@ -1,0 +1,2 @@
+QueryBuilder › SELECT
+SELECT \"id\", \"first\", \"last\" FROM authors

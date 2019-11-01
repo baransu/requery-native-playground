@@ -1,0 +1,78 @@
+{
+  "name": "requery-native",
+  "version": "0.1.0",
+  "description": "Starter Reason Esy Pesy Project",
+  "esy": {
+    "build": "refmterr dune build -p #{self.name}",
+    "NOTE": "Optional release Section. Customizes result of `esy release`",
+    "release": {
+      "releasedBinaries": [
+        "RequeryNativeApp.exe"
+      ]
+    },
+    "buildEnv": {
+      "ODOC_SYNTAX": "re"
+    }
+  },
+  "buildDirs": {
+    "test": {
+      "imports": [
+        "Library = require('requery-native/library')",
+        "Lwt = require('lwt')",
+        "Ezpostgresql = require('ezpostgresql')",
+        "Rely = require('rely/lib')"
+      ],
+      "flags": [
+        "-linkall",
+        "-g",
+        "-w",
+        "-9"
+      ]
+    },
+    "testExe": {
+      "imports": [
+        "Test = require('requery-native/test')"
+      ],
+      "bin": {
+        "RunRequeryNativeTests.exe": "RunRequeryNativeTests.re"
+      }
+    },
+    "library": {
+      "imports": [
+        "Yojson = require('yojson')",
+        "Tablecloth = require('tablecloth-native')",
+        "Belt = require('belt')",
+        "Console = require('console/lib')",
+        "Lwt = require('lwt')"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "esy x RunRequeryNativeTests.exe",
+    "doc": "esy dune build @doc",
+    "doc-path": "esy echo #{self.target_dir}/default/_doc/_html/index.html"
+  },
+  "dependencies": {
+    "@esy-ocaml/reason": "*",
+    "@opam/belt": "*",
+    "@opam/dune": "*",
+    "@opam/lwt": "4.4.0",
+    "@opam/tablecloth-native": "0.0.6",
+    "@opam/yojson": "1.7.0",
+    "@reason-native/console": "*",
+    "@reason-native/rely": "*",
+    "@opam/ezpostgresql": "*",
+    "ocaml": "~4.7.0",
+    "refmterr": "*"
+  },
+  "devDependencies": {
+    "@opam/merlin": "*",
+    "ocaml": "~4.7.0",
+    "@opam/odoc": "*",
+    "@pesy/esy-pesy": "0.1.0-alpha.2"
+  },
+  "resolutions": {
+    "@opam/belt": "github:jaredly/belt:package.json#4d07f85",
+    "@opam/ezpostgresql": "github:bobbypriambodo/ezpostgresql:ezpostgresql.opam#61bb851"
+  }
+}

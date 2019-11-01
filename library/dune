@@ -1,0 +1,16 @@
+(library (name RequeryNativeLibrary) (public_name requery-native.library)
+    (modules (:standard \ RequeryNativeLibraryPesyModules))
+    (libraries requery-native.library.pesy-modules)
+    (flags -open RequeryNativeLibraryPesyModules))
+(library (public_name requery-native.library.pesy-modules)
+    (name RequeryNativeLibraryPesyModules)
+    (modules RequeryNativeLibraryPesyModules)
+    (libraries belt console.lib lwt tablecloth-native yojson))
+(rule
+    (with-stdout-to RequeryNativeLibraryPesyModules.re
+        (run echo
+             "module Yojson = Yojson;\
+            \nmodule Tablecloth = Tablecloth;\
+            \nmodule Belt = Belt;\
+            \nmodule Console = Console;\
+            \nmodule Lwt = Lwt;")))

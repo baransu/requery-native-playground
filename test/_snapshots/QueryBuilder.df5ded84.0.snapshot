@@ -1,0 +1,2 @@
+QueryBuilder › CREATE TABLE
+CREATE TABLE IF NOT EXISTS \"authors\" (\"id\" TEXT PRIMARY KEY NOT NULL, \"first\" TEXT NOT NULL, \"last\" TEXT NOT NULL, UNIQUE (\"first\", \"last\"))

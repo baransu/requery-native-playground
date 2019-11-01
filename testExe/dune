@@ -1,0 +1,12 @@
+(executable (name RunRequeryNativeTests)
+    (modules (:standard \ RequeryNativeTestExePesyModules))
+    (public_name RunRequeryNativeTests.exe)
+    (libraries requery-native.testExe.pesy-modules)
+    (flags -open RequeryNativeTestExePesyModules))
+(library (public_name requery-native.testExe.pesy-modules)
+    (name RequeryNativeTestExePesyModules)
+    (modules RequeryNativeTestExePesyModules)
+    (libraries requery-native.test))
+(rule
+    (with-stdout-to RequeryNativeTestExePesyModules.re
+        (run echo "module Test = RequeryNativeTest;")))
