@@ -89,3 +89,102 @@
    let createView = (cli, cv) => exec(cli, Sql.CreateView(cv));
 
    let execRaw = ({handle, execRaw}, sql) => execRaw(handle, sql); */
+
+// Example connection_url "postgresql://postgres:postgres@localhost:5432/db_name";
+let create_pool = (~connection_url, ~size, ()) => {
+  Ezpostgresql.Pool.create(~conninfo=connection_url, ~size, ());
+};
+
+let create_table = (~query, pool) => {
+  let rendered_query = Sql.CreateTable(query) |> Postgres.render;
+
+  pool |> Ezpostgresql.Pool.command(~query=rendered_query);
+};
+
+let get_opt = (index, array) =>
+  try(Some(array[index])) {
+  | _ => None
+  };
+
+let select_all = (~table: (module Table.Table), ~query, pool) => {
+  module Table = (val table);
+
+  let columns = Table.get_columns(query);
+
+  let rendered_query = Sql.Select(query) |> Postgres.render;
+
+  pool
+  |> Ezpostgresql.Pool.all(~query=rendered_query)
+  |> Lwt.map(result =>
+       switch (result) {
+       | Ok(result) =>
+         Ok(
+           result
+           |> Array.map(result => {
+                columns
+                |> List.mapi((i, column) => {
+                     switch (get_opt(i, result)) {
+                     | None => None
+                     | Some(result) => Some((column, result))
+                     }
+                   })
+                |> List.fold_right(
+                     (item, acc) =>
+                       switch (item) {
+                       | None => acc
+                       | Some(item) => [item, ...acc]
+                       },
+                     _,
+                     [],
+                   )
+              }),
+         )
+
+       | Error(err) => Error(err)
+       }
+     );
+};
+
+let select_one = (~table: (module Table.Table), ~query: Sql.Select.select, pool) => {
+  module Table = (val table);
+
+  let columns = Table.get_columns(query);
+
+  let rendered_query = Sql.Select(query) |> Postgres.render;
+
+  pool
+  |> Ezpostgresql.Pool.one(~query=rendered_query)
+  |> Lwt.map(result =>
+       switch (result) {
+       | Ok(Some(result)) =>
+         Ok(
+           Some(
+             columns
+             |> List.mapi((i, column) => {
+                  switch (get_opt(i, result)) {
+                  | None => None
+                  | Some(result) => Some((column, result))
+                  }
+                })
+             |> List.fold_right(
+                  (item, acc) =>
+                    switch (item) {
+                    | None => acc
+                    | Some(item) => [item, ...acc]
+                    },
+                  _,
+                  [],
+                ),
+           ),
+         )
+       | Ok(None) => Ok(None)
+       | Error(err) => Error(err)
+       }
+     );
+};
+
+let insert = (~query, pool) => {
+  let rendered_query = Sql.Insert(query) |> Postgres.render;
+
+  pool |> Ezpostgresql.Pool.command(~query=rendered_query);
+};

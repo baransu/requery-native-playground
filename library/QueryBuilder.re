@@ -48,7 +48,8 @@ let cnames = l => L.map(l, Sql.ColumnName.fromString);
 let column = Sql.Column.fromString;
 let tcolumn = (t, c) => Sql.Column.fromStringWithTable(tname(t), c);
 let columns = Sql.Column.fromStringList;
-let tcolumns = l => Sql.Column.fromTupleList(L.map(l, ((t, c)) => (tname(t), c)));
+let tcolumns = l =>
+  Sql.Column.fromTupleList(L.map(l, ((t, c)) => (tname(t), c)));
 let col_ = c => E.Atom(E.Column(c));
 let col = c => E.Atom(E.Column(column(c)));
 let cols = cs => L.map(cs, col);
@@ -110,7 +111,8 @@ let call = (name, args) => E.Call(name, L.toArray(args));
 let e = (~a=?, expr): aliased(expr) => Aliased.make(expr, ~a?);
 
 let table = (~a=?, t) => Select.Table(Aliased.make(t, ~a?));
-let tableNamed = (~a=?, name) => Select.Table(Aliased.make(tname(name), ~a?));
+let tableNamed = (~a=?, name) =>
+  Select.Table(Aliased.make(tname(name), ~a?));
 let innerJoin = (t1, on, t2) => Select.(Join(Inner(on), t2, t1));
 let leftJoin = (t1, on, t2) => Select.(Join(Left(on), t2, t1));
 let rightJoin = (t1, on, t2) => Select.(Join(Right(on), t2, t1));
@@ -162,7 +164,12 @@ let orWhere: (expr, selectInUnion) => selectInUnion =
 let whereExists: (select, selectInUnion) => selectInUnion =
   (exists, sel) => {...sel, where: Some(WhereExists(exists))};
 
-let select = s => {Select.with_: None, select: Select(s), orderBy: None, limit: None};
+let select = s => {
+  Select.with_: None,
+  select: Select(s),
+  orderBy: None,
+  limit: None,
+};
 
 let selectN = (n, s) => {
   Select.with_: None,
@@ -204,37 +211,57 @@ let with_: (TableName.t, list(ColumnName.t), select, select) => select =
 let rec withs = defs =>
   switch (defs) {
   | [] => (select => select)
-  | [(t, cols, sel), ...defs] => (select => with_(t, cols, sel, withs(defs, select)))
+  | [(t, cols, sel), ...defs] => (
+      select => with_(t, cols, sel, withs(defs, select))
+    )
   };
 
 let orderBy = (exs, s) =>
-  Select.{...s, orderBy: Some(L.amap(exs, ((c, dir)) => (c, Some(dir))))};
-let orderBy_ = (exs, s) => Select.{...s, orderBy: Some(L.amap(exs, c => (c, None)))};
-let orderBy1 = (ex, dir, s) => Select.{...s, orderBy: Some([|(ex, Some(dir))|])};
+  Select.{
+    ...s,
+    orderBy: Some(L.amap(exs, ((c, dir)) => (c, Some(dir)))),
+  };
+let orderBy_ = (exs, s) =>
+  Select.{...s, orderBy: Some(L.amap(exs, c => (c, None)))};
+let orderBy1 = (ex, dir, s) =>
+  Select.{...s, orderBy: Some([|(ex, Some(dir))|])};
 let orderBy1_ = (ex, s) => Select.{...s, orderBy: Some([|(ex, None)|])};
 let orderBy2 = (ex1, dir1, ex2, dir2, s) =>
   Select.{...s, orderBy: Some([|(ex1, Some(dir1)), (ex2, Some(dir2))|])};
-let orderBy2_ = (ex1, ex2, s) => Select.{...s, orderBy: Some([|(ex1, None), (ex2, None)|])};
+let orderBy2_ = (ex1, ex2, s) =>
+  Select.{...s, orderBy: Some([|(ex1, None), (ex2, None)|])};
 let limit = (n, s) => Select.{...s, limit: Some(n)};
 let limit1 = s => Select.{...s, limit: Some(int(1))};
 
 //let orderByCols = orderBy_(column);
-let groupBy = (~having=?, cols, s) => Select.{...s, groupBy: Some((L.toArray(cols), having))};
-let groupBy1 = (~having=?, col, s) => Select.{...s, groupBy: Some(([|col|], having))};
-let groupByColumn = (~having=?, c, s) => Select.{...s, groupBy: Some(([|col(c)|], having))};
+let groupBy = (~having=?, cols, s) =>
+  Select.{...s, groupBy: Some((L.toArray(cols), having))};
+let groupBy1 = (~having=?, col, s) =>
+  Select.{...s, groupBy: Some(([|col|], having))};
+let groupByColumn = (~having=?, c, s) =>
+  Select.{...s, groupBy: Some(([|col(c)|], having))};
 let groupByCol = groupByColumn;
 let groupByColumns = (~having=?, cols, s) =>
   Select.{...s, groupBy: Some((L.amap(cols, col), having))};
 let groupByCols = groupByColumns;
 
 let convertRow = (toC, toE, (k, v)) => (toC(k), toE(v));
-let convertColumn = (toC, toE, (k, vs)) => (toC(k), A.map(L.toArray(vs), toE));
+let convertColumn = (toC, toE, (k, vs)) => (
+  toC(k),
+  A.map(L.toArray(vs), toE),
+);
 
 let insertColumns = cols =>
-  Insert.make(Values(L.toArray(L.map(cols, ((c, exprs)) => (c, L.toArray(exprs))))));
+  Insert.make(
+    Values(
+      L.toArray(L.map(cols, ((c, exprs)) => (c, L.toArray(exprs)))),
+    ),
+  );
 
 let insertColumnsWith = (toColumn, toExpr, cols) =>
-  Insert.make(Values(L.toArray(L.map(cols, convertColumn(toColumn, toExpr)))));
+  Insert.make(
+    Values(L.toArray(L.map(cols, convertColumn(toColumn, toExpr)))),
+  );
 
 let insertRows = rows =>
   Insert.(make(Values(rowsToColumns(L.toArray(L.map(rows, L.toArray))))));
@@ -244,24 +271,36 @@ let insertRowsWith = (toColumn, toExpr, rows) =>
     make(
       Values(
         rowsToColumns(
-          A.map(L.toArray(rows), row => A.map(L.toArray(row), convertRow(toColumn, toExpr))),
+          A.map(L.toArray(rows), row =>
+            A.map(L.toArray(row), convertRow(toColumn, toExpr))
+          ),
         ),
       ),
     )
   );
 
 let insertRow = row => insertRows([row]);
-let insertRowWith = (toC, toE, row) => insertRow(L.map(row, convertRow(toC, toE)));
+let insertRowWith = (toC, toE, row) =>
+  insertRow(L.map(row, convertRow(toC, toE)));
 let insertOne = (toRow, obj) => insertRow(toRow(obj));
 let insertMany = (toRow, objects) => insertRows(L.map(objects, toRow));
 let insertSelect = select => Insert.make(Insert.Select(select));
 
-let returning = (returning, insert) => Insert.{...insert, returning: Some(returning)};
+let returning = (returning, insert) =>
+  Insert.{...insert, returning: Some(returning)};
 
 let into = (t, f) => f(t);
 
 let cdef =
-    (~primaryKey=false, ~notNull=true, ~unique=false, ~check=?, ~default=?, name, type_)
+    (
+      ~primaryKey=false,
+      ~notNull=true,
+      ~unique=false,
+      ~check=?,
+      ~default=?,
+      name,
+      type_,
+    )
     : statement =>
   CreateTable.(
     ColumnDef({
@@ -291,7 +330,8 @@ let (constraint_, primaryKey, foreignKey, unique, check) = {
 let createTable = (~ifNotExists=true, name, statements) =>
   Sql.CreateTable.{name, statements: L.toArray(statements), ifNotExists};
 
-let createView = (~ifNotExists=true, name, query) => Sql.CreateView.{name, query, ifNotExists};
+let createView = (~ifNotExists=true, name, query) =>
+  Sql.CreateView.{name, query, ifNotExists};
 
 module Types = {
   let int = typeName("INTEGER");

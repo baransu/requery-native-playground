@@ -39,6 +39,7 @@
     },
     "library": {
       "imports": [
+        "Ezpostgresql = require('ezpostgresql')",
         "Yojson = require('yojson')",
         "Tablecloth = require('tablecloth-native')",
         "Belt = require('belt')",
@@ -69,7 +70,7 @@
     "@opam/merlin": "*",
     "ocaml": "~4.7.0",
     "@opam/odoc": "*",
-    "@pesy/esy-pesy": "0.1.0-alpha.2"
+    "@pesy/esy-pesy": "0.1.0-alpha.4"
   },
   "resolutions": {
     "@opam/belt": "github:jaredly/belt:package.json#4d07f85",

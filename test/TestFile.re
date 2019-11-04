@@ -8,6 +8,11 @@ let pool = Ezpostgresql.Pool.create(~conninfo=connection_url, ~size=8, ());
 let create_table = () => {
   let table_name = QueryBuilder.tname("authors");
 
+  // create table with list of columns
+  // column(string, db type, fromString, toString, additional options)
+  // constraints
+  // -> generate create table, select, insert with encode/decode functions
+
   QueryBuilder.(
     [
       cdef("id", Types.text, ~primaryKey=true),
@@ -44,30 +49,34 @@ let insert_table = () => {
   );
 };
 
-type user = {
-  id: string,
-  first: string,
-  last: string,
-};
+let identity = a => a;
 
-// TODO: fromStringRow
-// TODO: toStringRow
 
-let alternative_insert_table = () => {
-  let table_name = QueryBuilder.tname("authors");
+module User = {
+  type t = {
+    id: string,
+    first: string,
+    last: string,
+  }
+}
 
-  RowEncode.(
-    [{id: "4", first: "Stephen", last: "King"}]
-    |> insertMany(user =>
-         stringRow([
-           ("id", string(user.id)),
-           ("first", string(user.first)),
-           ("last", string(user.last)),
-         ])
-       )
-    |> into(table_name)
-  );
-};
+module UsersTable =
+  Table.Make({
+    type t = User.t;
+  
+    let tname = "authors";
+  
+    let columns =
+      QueryBuilder.(User.[
+        ("id", t => string(t.id)),
+        ("first", t => string(t.first)),
+        ("last", t => string(t.last)),
+      ]);
+  });
+
+let connection_url = "postgresql://postgres:postgres@localhost:5432/db_name";
+
+let pool = Client.create_pool(~size=8, ~connection_url, ());
 
 describe("QueryBuilder", ({test, _}) => {
   test("CREATE TABLE", ({expect}) => {
@@ -82,24 +91,32 @@ describe("QueryBuilder", ({test, _}) => {
   });
 
   test("creates table, inserts rows and selectes them", ({expect}) => {
-    let create_table_query =
-      Sql.CreateTable(create_table()) |> Postgres.render;
     let Ok(_) =
-      pool
-      |> Ezpostgresql.Pool.command(~query=create_table_query)
-      |> Lwt_main.run;
+      pool |> Client.create_table(~query=create_table()) |> Lwt_main.run;
 
-    let insert_table_query = Sql.Insert(insert_table()) |> Postgres.render;
-    let Ok(_) =
-      pool
-      |> Ezpostgresql.Pool.command(~query=insert_table_query)
-      |> Lwt_main.run;
+    let query =
+    [User.{id: "4", first: "Stephen", last: "King"}]
+      |> UsersTable.insert_many;
 
-    let select_table_query = Sql.Select(select_table()) |> Postgres.render;
+    let Ok(_) = pool |> Client.insert(~query) |> Lwt_main.run;
+
     let Ok(result) =
-      pool |> Ezpostgresql.Pool.all(~query=select_table_query) |> Lwt_main.run;
+      pool |> Client.select_all(~query=select_table()) |> Lwt_main.run;
 
-    Console.log(result);
+    let get = (column, row) =>
+      row |> List.find(((col, _)) => col == column) |> snd;
+
+    let users =
+      result
+      |> Array.map(row => {
+           User.{
+             id: row |> get("id"),
+             first: row |> get("last"),
+             last: row |> get("first"),
+           }
+         });
+
+    Console.log(users);
 
     expect.int(result |> Array.length).toBe(3);
   });
