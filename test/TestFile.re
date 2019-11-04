@@ -51,28 +51,24 @@ let insert_table = () => {
 
 let identity = a => a;
 
-
-module User = {
+module UsersTable = {
   type t = {
     id: string,
     first: string,
     last: string,
-  }
-}
+  };
 
-module UsersTable =
-  Table.Make({
-    type t = User.t;
-  
-    let tname = "authors";
-  
-    let columns =
-      QueryBuilder.(User.[
-        ("id", t => string(t.id)),
-        ("first", t => string(t.first)),
-        ("last", t => string(t.last)),
-      ]);
-  });
+  let tname = "authors";
+
+  let columns =
+    QueryBuilder.[
+      ("id", t => string(t.id)),
+      ("first", t => string(t.first)),
+      ("last", t => string(t.last)),
+    ];
+};
+
+module UsersTableImpl = Table.Make(UsersTable);
 
 let connection_url = "postgresql://postgres:postgres@localhost:5432/db_name";
 
@@ -95,24 +91,34 @@ describe("QueryBuilder", ({test, _}) => {
       pool |> Client.create_table(~query=create_table()) |> Lwt_main.run;
 
     let query =
-    [User.{id: "4", first: "Stephen", last: "King"}]
-      |> UsersTable.insert_many;
+      [UsersTable.{id: "4", first: "Stephen", last: "King"}]
+      |> UsersTableImpl.insert_many;
 
     let Ok(_) = pool |> Client.insert(~query) |> Lwt_main.run;
 
     let Ok(result) =
-      pool |> Client.select_all(~query=select_table()) |> Lwt_main.run;
+      pool
+      |> Client.select_all(
+           ~table=(module UsersTableImpl),
+           ~query=select_table(),
+         )
+      |> Lwt_main.run;
 
-    let get = (column, row) =>
+    /* TODO: create utisl */
+    let get_exn = (column, row) =>
       row |> List.find(((col, _)) => col == column) |> snd;
+    let get = (column, row) =>
+      row
+      |> List.find_opt(((col, _)) => col == column)
+      |> Belt.Option.map(_, snd);
 
     let users =
       result
       |> Array.map(row => {
-           User.{
-             id: row |> get("id"),
-             first: row |> get("last"),
-             last: row |> get("first"),
+           UsersTable.{
+             id: row |> get_exn("id"),
+             first: row |> get_exn("last"),
+             last: row |> get_exn("first"),
            }
          });
 

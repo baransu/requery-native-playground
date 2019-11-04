@@ -6,11 +6,11 @@ module type Config = {
 
 module type Table = {
   include Config;
-  let insert_many: (list(t)) => Sql.Insert.t(unit);
+  let insert_many: (list(t)) => Sql.Insert.t(Postgres.Sql.Returning.t);
   let get_columns: Sql.Select.select => list(string);
 };
 
-module Make = (Config: Config) : Table => {
+module Make = (Config: Config) : (Table with type t = Config.t) => {
   include Config;
 
   let table_name = QueryBuilder.tname(Config.tname);
