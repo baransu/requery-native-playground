@@ -109,7 +109,7 @@ let get_opt = (index, array) =>
 let select_all = (~table: (module Table.Table), ~query, pool) => {
   module Table = (val table);
 
-  let columns = Table.get_columns(query);
+  let columns = Table.get_select_columns(query);
 
   let rendered_query = Sql.Select(query) |> Postgres.render;
 
@@ -149,7 +149,7 @@ let select_one =
     (~table: (module Table.Table), ~query: Sql.Select.select, pool) => {
   module Table = (val table);
 
-  let columns = Table.get_columns(query);
+  let columns = Table.get_select_columns(query);
 
   let rendered_query = Sql.Select(query) |> Postgres.render;
 
@@ -184,10 +184,47 @@ let select_one =
      );
 };
 
-let insert = (~query, pool) => {
+let insert = (~table: (module Table.Table), ~query, pool) => {
+  module Table = (val table);
+
+  let columns = Table.get_insert_columns(query);
+
   let rendered_query = Sql.Insert(query) |> Postgres.render;
 
-  pool |> Ezpostgresql.Pool.command(~query=rendered_query);
+  Console.log(rendered_query);
+
+  pool
+  |> Ezpostgresql.Pool.command_returning(~query=rendered_query)
+  |> Lwt.map(result =>
+       switch (result) {
+       | Ok(result) =>
+      
+         Ok(
+           result
+           |> Array.map(result => {
+                result |> Array.iter(Console.log);
+                columns
+                |> List.mapi((i, column) => {
+                     switch (get_opt(i, result)) {
+                     | None => None
+                     | Some(result) => Some((column, result))
+                     }
+                   })
+                |> List.fold_right(
+                     (item, acc) =>
+                       switch (item) {
+                       | None => acc
+                       | Some(item) => [item, ...acc]
+                       },
+                     _,
+                     [],
+                   )
+              }),
+         )
+
+       | Error(err) => Error(err)
+       }
+     );
 };
 
 let drop_table = (~table_name, pool) => {

@@ -60,11 +60,28 @@ describe("QueryBuilder", ({test}) => {
   });
 
   test("creates table, inserts rows and selectes them", ({expect}) => {
-    let query =
-      [UsersTable.{id: "4", first: "Stephen", last: "King"}]
-      |> UsersTableImpl.insert_many;
+    let user = UsersTable.{id: "4", first: "Stephen", last: "King"};
+    let query = [user] |> UsersTableImpl.insert_many;
 
-    let Ok(_) = pool |> Client.insert(~query) |> Lwt_main.run;
+    let Ok(result) =
+      pool
+      |> Client.insert(~table=(module UsersTableImpl), ~query)
+      |> Lwt_main.run;
+
+    Console.log(result);
+
+    let inserted =
+      UsersTableImpl.(
+        UsersTable.{
+          id: result[0] |> get_exn("id"),
+          first: result[0] |> get_exn("first"),
+          last: result[0] |> get_exn("last"),
+        }
+      );
+
+    expect.string(inserted.id).toEqual(user.id);
+    expect.string(inserted.first).toEqual(user.first);
+    expect.string(inserted.last).toEqual(user.last);
 
     let Ok(result) =
       pool
@@ -89,6 +106,7 @@ describe("QueryBuilder", ({test}) => {
       |> List.find((user: UsersTable.t) => user.id == "4");
 
     expect.string(user.first).toEqual("Stephen");
+
     expect.string(user.last).toEqual("King");
   });
 });

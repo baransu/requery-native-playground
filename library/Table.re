@@ -1,3 +1,6 @@
+module Sql = Postgres.Sql;
+module QueryBuilder = Postgres.QueryBuilder;
+
 module Col = {
   type t('a) = {
     key: string,
@@ -39,10 +42,12 @@ module type Table = {
 
   let create_table: unit => Sql.CreateTable.t;
 
-  let insert_many: list(t) => Sql.Insert.t(Postgres.Sql.Returning.t);
-  let insert_one: t => Sql.Insert.t(Postgres.Sql.Returning.t);
+  let insert_many: list(t) => Sql.Insert.t(Sql.Returning.t);
+  let insert_one: t => Sql.Insert.t(Sql.Returning.t);
 
-  let get_columns: Sql.Select.select => list(string);
+  let get_select_columns: Sql.Select.select => list(string);
+  let get_insert_columns: Sql.Insert.t(Sql.Returning.t) => list(string);
+
   let get_exn: (string, list((string, string))) => string;
   let get: (string, list((string, string))) => option(string);
 };
@@ -57,12 +62,12 @@ module Make = (Config: Config) : (Table with type t = Config.t) => {
       Config.columns
       |> List.map((column: Col.t(t)) =>
            cdef(
-             column.key,
-             Types.text,
              ~notNull=column.not_null,
              ~unique=column.unique,
              ~check=?column.check,
              ~primaryKey=column.primary_key,
+             column.key,
+             Types.text,
            )
          )
       |> createTable(table_name, ~ifNotExists=true)
@@ -76,14 +81,46 @@ module Make = (Config: Config) : (Table with type t = Config.t) => {
   };
 
   let insert_many = (rows: list(t)) => {
-    RowEncode.(rows |> insertMany(to_string_row) |> into(table_name));
+    QueryBuilder.(
+      RowEncode.(rows |> insertMany(to_string_row) |> into(table_name))
+      |> returning(
+           Config.columns
+           |> List.map((column: Col.t(t)) =>
+                Sql.Column.fromString(column.key)
+              )
+           |> Array.of_list,
+         )
+    );
   };
 
   let insert_one = (row: t) => {
     RowEncode.(row |> insertOne(to_string_row) |> into(table_name));
   };
 
-  let get_columns = (query: Sql.Select.select) =>
+  let get_insert_columns = (query: Sql.Insert.t(Sql.Returning.t)) =>
+  switch (query.returning) {
+    | None => []
+    | Some(Columns(columns)) =>
+      columns
+      |> Array.map(Sql.Column.toTuple)
+      |> Array.map(snd)
+      |> Array.map(
+           fun
+           | Sql.Column.Named(name) => Some(name |> Sql.ColumnName.toString)
+           | _ => None // TODO: when all get Sql.Column.All
+         )
+      |> Array.fold_right(
+           (item, acc) =>
+             switch (item) {
+             | None => acc
+             | Some(item) => [item, ...acc]
+             },
+           _,
+           [],
+         )
+    };
+
+  let get_select_columns = (query: Sql.Select.select) =>
     switch (query.select) {
     | Select({selections, _}) =>
       selections
