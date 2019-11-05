@@ -98,6 +98,8 @@ let create_pool = (~connection_url, ~size, ()) => {
 let create_table = (~query, pool) => {
   let rendered_query = Sql.CreateTable(query) |> Postgres.render;
 
+  Console.log(rendered_query);
+
   pool |> Ezpostgresql.Pool.command(~query=rendered_query);
 };
 
@@ -112,6 +114,8 @@ let select_all = (~table: (module Table.Table), ~query, pool) => {
   let columns = Table.get_columns(query);
 
   let rendered_query = Sql.Select(query) |> Postgres.render;
+
+  Console.log(rendered_query);
 
   pool
   |> Ezpostgresql.Pool.all(~query=rendered_query)
@@ -153,6 +157,8 @@ let select_one =
 
   let rendered_query = Sql.Select(query) |> Postgres.render;
 
+  Console.log(rendered_query);
+
   pool
   |> Ezpostgresql.Pool.one(~query=rendered_query)
   |> Lwt.map(result =>
@@ -187,12 +193,15 @@ let select_one =
 let insert = (~query, pool) => {
   let rendered_query = Sql.Insert(query) |> Postgres.render;
 
+  Console.log(rendered_query);
+
   pool |> Ezpostgresql.Pool.command(~query=rendered_query);
 };
 
 let drop_table = (~table_name, pool) => {
-  pool
-  |> Ezpostgresql.Pool.command(
-       ~query="DROP TABLE " ++ Sql.TableName.toString(table_name),
-     );
+  let rendered_query = "DROP TABLE " ++ Sql.TableName.toString(table_name);
+
+  Console.log(rendered_query);
+
+  pool |> Ezpostgresql.Pool.command(~query=rendered_query);
 };
