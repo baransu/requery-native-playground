@@ -1,7 +1,7 @@
 (library (name RequeryNativeTest) (public_name requery-native.test)
     (modules (:standard \ RequeryNativeTestPesyModules))
     (libraries requery-native.test.pesy-modules)
-    (flags -linkall -g -w -9 -open RequeryNativeTestPesyModules))
+    (flags -linkall -g -w -9-8 -open RequeryNativeTestPesyModules))
 (library (public_name requery-native.test.pesy-modules)
     (name RequeryNativeTestPesyModules)
     (modules RequeryNativeTestPesyModules)

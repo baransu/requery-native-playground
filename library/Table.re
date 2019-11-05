@@ -1,30 +1,84 @@
+module Col = {
+  type t('a) = {
+    key: string,
+    encode: 'a => QueryBuilder.expr,
+    primary_key: bool,
+    unique: bool,
+    not_null: bool,
+    check: option(QueryBuilder.expr),
+  };
+
+  let make =
+      (
+        ~key,
+        ~encode,
+        ~primary_key=false,
+        ~unique=false,
+        ~not_null=false,
+        ~check=?,
+        (),
+      ) => {
+    key,
+    encode,
+    primary_key,
+    unique,
+    not_null,
+    check,
+  };
+};
+
 module type Config = {
   type t;
   let tname: string;
-  let columns: list((string, t => QueryBuilder.expr));
+  let columns: list(Col.t(t));
 };
 
 module type Table = {
-  include Config;
-  let insert_many: (list(t)) => Sql.Insert.t(Postgres.Sql.Returning.t);
+  type t;
+  let table_name: Sql.TableName.t;
+
+  let create_table: unit => Sql.CreateTable.t;
+
+  let insert_many: list(t) => Sql.Insert.t(Postgres.Sql.Returning.t);
   let get_columns: Sql.Select.select => list(string);
+  let get_exn: (string, list((string, string))) => string;
+  let get: (string, list((string, string))) => option(string);
 };
 
 module Make = (Config: Config) : (Table with type t = Config.t) => {
-  include Config;
+  type t = Config.t;
 
   let table_name = QueryBuilder.tname(Config.tname);
 
-  let insert_many = (rows: list(t)) => {
-    RowEncode.(
-      rows
-      |> insertMany(user =>
-           Config.columns
-           |> List.map(((col, fn)) => (col, fn(user)))
-           |> stringRow
+  let create_table = () => {
+    QueryBuilder.(
+      Config.columns
+      |> List.map((column: Col.t(t)) =>
+           cdef(
+             column.key,
+             Types.text,
+             ~notNull=column.not_null,
+             ~unique=column.unique,
+             ~check=?column.check,
+             ~primaryKey=column.primary_key,
+           )
          )
-      |> into(table_name)
+      |> createTable(table_name, ~ifNotExists=true)
     );
+  };
+
+  let to_string_row = row => {
+    Config.columns
+    |> List.map(column => Col.(column.key, column.encode(row)))
+    |> RowEncode.stringRow;
+  };
+
+  let insert_many = (rows: list(t)) => {
+    RowEncode.(rows |> insertMany(to_string_row) |> into(table_name));
+  };
+
+  let insert_one = (row: t) => {
+    RowEncode.(row |> insertOne(to_string_row) |> into(table_name));
   };
 
   let get_columns = (query: Sql.Select.select) =>
@@ -55,4 +109,11 @@ module Make = (Config: Config) : (Table with type t = Config.t) => {
     | Union(_, _) => []
     | UnionAll(_, _) => []
     };
+
+  let get = (column, row) =>
+    row
+    |> List.find_opt(((col, _)) => col == column)
+    |> Belt.Option.map(_, snd);
+
+  let get_exn = (column, row) => row |> get(column) |> Belt.Option.getExn;
 };

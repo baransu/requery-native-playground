@@ -145,7 +145,8 @@ let select_all = (~table: (module Table.Table), ~query, pool) => {
      );
 };
 
-let select_one = (~table: (module Table.Table), ~query: Sql.Select.select, pool) => {
+let select_one =
+    (~table: (module Table.Table), ~query: Sql.Select.select, pool) => {
   module Table = (val table);
 
   let columns = Table.get_columns(query);
@@ -187,4 +188,11 @@ let insert = (~query, pool) => {
   let rendered_query = Sql.Insert(query) |> Postgres.render;
 
   pool |> Ezpostgresql.Pool.command(~query=rendered_query);
+};
+
+let drop_table = (~table_name, pool) => {
+  pool
+  |> Ezpostgresql.Pool.command(
+       ~query="DROP TABLE " ++ Sql.TableName.toString(table_name),
+     );
 };
