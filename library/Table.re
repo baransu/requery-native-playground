@@ -40,6 +40,8 @@ module type Table = {
   let create_table: unit => Sql.CreateTable.t;
 
   let insert_many: list(t) => Sql.Insert.t(Postgres.Sql.Returning.t);
+  let insert_one: t => Sql.Insert.t(Postgres.Sql.Returning.t);
+
   let get_columns: Sql.Select.select => list(string);
   let get_exn: (string, list((string, string))) => string;
   let get: (string, list((string, string))) => option(string);
